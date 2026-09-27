@@ -22,16 +22,17 @@ Les trois niveaux de QoS ont été modélisés comme trois chemins distincts apr
 
 ## 4. Description générale du modèle nominal UPPAAL
 
-### 4.1 Template Publisher — états, canaux et variables
-Automate représentant le client qui publie les données : connexion, authentification, puis publication selon le QoS choisi.
+### 4.1 Template Publisher ; états, canaux et variables
+Automate représentant le client qui publie les données : connexion, authentification, puis publication selon le QoS choisi.<img width="1681" height="908" alt="image" src="https://github.com/user-attachments/assets/ea107e3d-49ec-4e20-9ff4-a2aa0d291901" />
 
-### 4.2 Template Broker — états, canaux et logique de contrôle
+
+### 4.2 Template Broker ; états, canaux et logique de contrôle
 Automate central qui gère l'authentification des deux clients et relaie les messages du Publisher vers le Subscriber.
 
-### 4.3 Template Subscriber — états, canaux et variables
+### 4.3 Template Subscriber ; états, canaux et variables
 Automate représentant le client abonné : connexion, authentification, abonnement au topic, réception des messages.
 
-## 5. Vérifications générales — Propriétés et requêtes CTL
+## 5. Vérifications générales ; Propriétés et requêtes CTL
 
 ### 5.1 Absence de deadlock
 Vérifie que le système ne se bloque jamais complètement.
@@ -47,7 +48,7 @@ L'ensemble des propriétés vérifiées (P1 à P12) est regroupé et validé dan
 
 ## 6. Vulnérabilités CVE et modélisation des attaques
 
-### 6.1 Interception passive (Sniffing) — absence de chiffrement TLS
+### 6.1 Interception passive (Sniffing) ; absence de chiffrement TLS
 Modélise un attaquant capable d'intercepter et d'altérer les messages en l'absence de chiffrement TLS.
 
 ### 6.2 Bypass d'authentification et déni de service (CVE-2017-7654)
@@ -55,8 +56,8 @@ Modélise la vulnérabilité réelle CVE-2017-7654 du broker Mosquitto, permetta
 
 ## 7. Contre-mesures et validation formelle
 
-### 7.1 Activation du chiffrement TLS — Attaque 1
+### 7.1 Activation du chiffrement TLS ; Attaque 1
 L'activation du chiffrement TLS est vérifiée formellement : les propriétés d'interception et d'altération des messages deviennent non atteignables.
 
-### 7.2 Authentification stricte et limitation de connexions — CVE-2017-7654
+### 7.2 Authentification stricte et limitation de connexions ; CVE-2017-7654
 L'ajout d'une vérification stricte du mot de passe et d'une limite de connexions est vérifié formellement : l'attaquant ne peut plus se connecter ni s'authentifier.

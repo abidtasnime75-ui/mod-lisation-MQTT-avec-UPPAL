@@ -1,0 +1,659 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>
+// MQTT v3.1.1 - Modele Nominal
+// Channels - urgent pour synchronisation immediate
+urgent chan pub_connect;
+urgent chan pub_connack;
+chan pub_publish;
+urgent chan pub_puback;
+urgent chan pub_pubrec;
+urgent chan pub_pubrel;
+urgent chan pub_pubcomp;
+urgent chan pub_pingreq;
+urgent chan pub_pingresp;
+urgent chan pub_disconnect;
+
+urgent chan sub_connect;
+urgent chan sub_connack;
+urgent chan sub_subscribe;
+urgent chan sub_suback;
+urgent chan sub_unsubscribe;
+urgent chan sub_unsuback;
+chan sub_publish;
+urgent chan sub_puback;
+urgent chan sub_pubrec;
+urgent chan sub_pubrel;
+urgent chan sub_pubcomp;
+urgent chan sub_pingreq;
+urgent chan sub_pingresp;
+urgent chan sub_disconnect;
+
+// === VARIABLES D'ATTAQUE (ajoutées) ===
+bool attack_active = true;
+int attack_mode = 0;
+int intercepted_count = 0;
+bool message_tampered = false;
+
+// === SECURITE : chiffrement TLS symbolique ===
+bool tls_enabled = true;
+
+// Variables globales originales
+bool pub_authenticated = false;
+bool sub_authenticated = false;
+bool sub_subscribed = false;
+bool session_pub_active = false;
+bool session_sub_active = false;
+int message_count = 0;
+int delivered_count = 0;
+  </declaration>
+	<template>
+		<name>Publisher</name>
+		<declaration>
+clock t;
+clock c;
+    </declaration>
+		<location id="id0" x="-400" y="-200">
+			<name x="-420" y="-230">Idle</name>
+		</location>
+		<location id="id1" x="-200" y="-200">
+			<name x="-220" y="-230">Connecting</name>
+			<label kind="invariant" x="-221" y="-187">t &lt;= 30</label>
+		</location>
+		<location id="id2" x="399" y="-204">
+			<name x="379" y="-234">Connected</name>
+		</location>
+		<location id="id3" x="731" y="-204">
+			<name x="697" y="-187">Publishing</name>
+		</location>
+		<location id="id4" x="544" y="-433">
+			<name x="524" y="-463">WaitPuback</name>
+		</location>
+		<location id="id5" x="481" y="-7">
+			<name x="484" y="8">WaitPubrec</name>
+		</location>
+		<location id="id6" x="400" y="200">
+			<name x="365" y="221">WaitPubcomp</name>
+		</location>
+		<location id="id7" x="34" y="0">
+			<name x="4" y="20">KeepAlive</name>
+			<label kind="invariant" x="4" y="40">c &lt;= 10</label>
+		</location>
+		<location id="id8" x="-467" y="0">
+			<name x="-497" y="20">Disconnected</name>
+		</location>
+		<init ref="id0"/>
+		<transition id="id9">
+			<source ref="id6"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="204" y="119">pub_pubcomp?</label>
+			<nail x="246" y="76"/>
+		</transition>
+		<transition id="id10">
+			<source ref="id4"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="476" y="-306">pub_puback?</label>
+			<nail x="535" y="-331"/>
+		</transition>
+		<transition id="id11">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-357" y="-238">pub_connect!</label>
+			<label kind="assignment" x="-357" y="-223">t = 0, c = 0</label>
+		</transition>
+		<transition id="id12">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="0" y="-229">pub_connack?</label>
+			<label kind="assignment" x="-144" y="-195">pub_authenticated = true, session_pub_active = true, c = 0</label>
+		</transition>
+		<transition id="id13">
+			<source ref="id1"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-374" y="-127">t &gt;= 30</label>
+		</transition>
+		<transition id="id14">
+			<source ref="id2"/>
+			<target ref="id3"/>
+		</transition>
+		<transition id="id15">
+			<source ref="id3"/>
+			<target ref="id3"/>
+			<label kind="guard" x="771" y="-279">pub_authenticated == true</label>
+			<label kind="synchronisation" x="771" y="-264">pub_publish!</label>
+			<nail x="731" y="-264"/>
+			<nail x="771" y="-264"/>
+		</transition>
+		<transition id="id16">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="595" y="-408">pub_authenticated == true</label>
+			<label kind="synchronisation" x="612" y="-382">pub_publish!</label>
+		</transition>
+		<transition id="id17">
+			<source ref="id3"/>
+			<target ref="id5"/>
+			<label kind="guard" x="620" y="-93">pub_authenticated == true</label>
+			<label kind="synchronisation" x="595" y="-68">pub_publish!</label>
+			<nail x="671" y="-136"/>
+			<nail x="620" y="-93"/>
+		</transition>
+		<transition id="id18">
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="450" y="93">pub_pubrec?</label>
+		</transition>
+		<transition id="id19">
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="484" y="187">pub_pubrel!</label>
+			<nail x="460" y="180"/>
+			<nail x="501" y="229"/>
+		</transition>
+		<transition id="id20">
+			<source ref="id3"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="85" y="-17">pub_pingreq!</label>
+			<label kind="assignment" x="59" y="-61">c = 0</label>
+			<nail x="199" y="4"/>
+		</transition>
+		<transition id="id21">
+			<source ref="id7"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="76" y="-102">pub_pingresp?</label>
+			<nail x="17" y="-76"/>
+			<nail x="221" y="-76"/>
+		</transition>
+		<transition id="id22">
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-255" y="8">c &gt;= 10</label>
+			<label kind="assignment" x="-425" y="-25">session_pub_active = false, pub_authenticated = false</label>
+		</transition>
+		<transition id="id23">
+			<source ref="id3"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-119" y="-119">pub_disconnect!</label>
+			<label kind="assignment" x="-229" y="-144">session_pub_active = false, pub_authenticated = false</label>
+			<nail x="204" y="-119"/>
+			<nail x="-238" y="-119"/>
+		</transition>
+		<transition id="id24">
+			<source ref="id8"/>
+			<target ref="id0"/>
+			<nail x="-450" y="-110"/>
+			<nail x="-442" y="-153"/>
+		</transition>
+	</template>
+	<template>
+		<name>Broker</name>
+		<declaration>
+int clients = 0;
+    </declaration>
+		<location id="id25" x="-400" y="-200">
+			<name x="-420" y="-230">BrokerStart</name>
+		</location>
+		<location id="id26" x="-200" y="-200">
+			<name x="-220" y="-230">Listening</name>
+		</location>
+		<location id="id27" x="-85" y="-399">
+			<name x="-105" y="-429">AuthPub</name>
+			<committed/>
+		</location>
+		<location id="id28" x="204" y="-399">
+			<name x="170" y="-391">PubActive</name>
+		</location>
+		<location id="id29" x="459" y="-399">
+			<name x="439" y="-429">PubWaitPubrel</name>
+		</location>
+		<location id="id30" x="204" y="-561">
+			<name x="184" y="-591">PubPingresp</name>
+		</location>
+		<location id="id31" x="-119" y="42">
+			<name x="-139" y="62">AuthSub</name>
+			<committed/>
+		</location>
+		<location id="id32" x="200" y="0">
+			<name x="212" y="17">SubActive</name>
+		</location>
+		<location id="id33" x="544" y="374">
+			<name x="524" y="394">SubWaitPubrec</name>
+		</location>
+		<location id="id34" x="400" y="200">
+			<name x="425" y="187">SubWaitPubcomp</name>
+		</location>
+		<location id="id35" x="200" y="-200">
+			<name x="153" y="-229">SubPingresp</name>
+		</location>
+		<location id="id36" x="127" y="221">
+			<name x="34" y="238">ProcessingUnsub</name>
+		</location>
+		<location id="id37" x="195" y="374">
+			<name x="136" y="399">DeliveringMsg</name>
+		</location>
+		<init ref="id25"/>
+		<transition id="id38">
+			<source ref="id32"/>
+			<target ref="id37"/>
+			<label kind="synchronisation" x="51" y="314">sub_publish!</label>
+			<label kind="assignment" x="-297" y="340">sub_authenticated == true &amp;&amp; sub_subscribed == true</label>
+			<nail x="170" y="365"/>
+		</transition>
+		<transition id="id39">
+			<source ref="id32"/>
+			<target ref="id36"/>
+			<label kind="synchronisation" x="-102" y="204">sub_unsubscribe?</label>
+			<nail x="-59" y="170"/>
+		</transition>
+		<transition id="id40">
+			<source ref="id32"/>
+			<target ref="id35"/>
+			<label kind="synchronisation" x="255" y="-229">sub_pingreq?</label>
+			<nail x="238" y="-119"/>
+			<nail x="263" y="-153"/>
+			<nail x="382" y="-204"/>
+		</transition>
+		<transition id="id41">
+			<source ref="id28"/>
+			<target ref="id30"/>
+			<label kind="synchronisation" x="-51" y="-561">pub_pingreq?</label>
+			<nail x="-8" y="-527"/>
+		</transition>
+		<transition id="id42">
+			<source ref="id29"/>
+			<target ref="id28"/>
+			<label kind="synchronisation" x="382" y="-340">pub_pubrel?</label>
+			<nail x="425" y="-340"/>
+		</transition>
+		<transition id="id43">
+			<source ref="id25"/>
+			<target ref="id26"/>
+		</transition>
+		<transition id="id44">
+			<source ref="id26"/>
+			<target ref="id27"/>
+			<label kind="synchronisation" x="-229" y="-348">pub_connect?</label>
+		</transition>
+		<transition id="id45">
+			<source ref="id27"/>
+			<target ref="id28"/>
+			<label kind="synchronisation" x="8" y="-450">pub_connack!</label>
+			<label kind="assignment" x="17" y="-425">clients++</label>
+		</transition>
+		<transition id="id46">
+			<source ref="id28"/>
+			<target ref="id28"/>
+			<label kind="synchronisation" x="255" y="-493">pub_publish?</label>
+			<nail x="255" y="-467"/>
+			<nail x="331" y="-467"/>
+		</transition>
+		<transition id="id47">
+			<source ref="id28"/>
+			<target ref="id28"/>
+			<label kind="synchronisation" x="297" y="-518">pub_puback!</label>
+			<nail x="255" y="-501"/>
+			<nail x="425" y="-501"/>
+		</transition>
+		<transition id="id48">
+			<source ref="id28"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="300" y="-420">pub_pubrec!</label>
+		</transition>
+		<transition id="id49">
+			<source ref="id28"/>
+			<target ref="id28"/>
+			<label kind="synchronisation" x="323" y="-552">pub_pubcomp!</label>
+			<nail x="243" y="-527"/>
+			<nail x="518" y="-527"/>
+		</transition>
+		<transition id="id50">
+			<source ref="id30"/>
+			<target ref="id28"/>
+			<label kind="synchronisation" x="93" y="-527">pub_pingresp!</label>
+		</transition>
+		<transition id="id51">
+			<source ref="id28"/>
+			<target ref="id26"/>
+			<label kind="synchronisation" x="-76" y="-246">pub_disconnect?</label>
+			<label kind="assignment" x="-59" y="-221">clients--</label>
+			<nail x="119" y="-204"/>
+		</transition>
+		<transition id="id52">
+			<source ref="id26"/>
+			<target ref="id31"/>
+			<label kind="synchronisation" x="-263" y="-68">sub_connect?</label>
+		</transition>
+		<transition id="id53">
+			<source ref="id31"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="-42" y="-17">sub_connack!</label>
+			<label kind="assignment" x="-34" y="0">clients++</label>
+		</transition>
+		<transition id="id54">
+			<source ref="id32"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="255" y="-76">sub_subscribe?</label>
+			<nail x="238" y="-51"/>
+			<nail x="348" y="-51"/>
+		</transition>
+		<transition id="id55">
+			<source ref="id32"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="314" y="-110">sub_suback!</label>
+			<nail x="240" y="-80"/>
+			<nail x="484" y="-85"/>
+		</transition>
+		<transition id="id56">
+			<source ref="id36"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="51" y="110">sub_unsuback!</label>
+		</transition>
+		<transition id="id57">
+			<source ref="id37"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="212" y="110">sub_puback?</label>
+		</transition>
+		<transition id="id58">
+			<source ref="id37"/>
+			<target ref="id33"/>
+			<label kind="synchronisation" x="314" y="348">sub_pubrec?</label>
+		</transition>
+		<transition id="id59">
+			<source ref="id33"/>
+			<target ref="id34"/>
+			<label kind="synchronisation" x="484" y="272">sub_pubrel!</label>
+		</transition>
+		<transition id="id60">
+			<source ref="id34"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="391" y="59">sub_pubcomp?</label>
+			<nail x="374" y="34"/>
+		</transition>
+		<transition id="id61">
+			<source ref="id35"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="127" y="-178">sub_pingresp!</label>
+		</transition>
+		<transition id="id62">
+			<source ref="id32"/>
+			<target ref="id26"/>
+			<label kind="synchronisation" x="-34" y="-144">sub_disconnect?</label>
+			<label kind="assignment" x="0" y="-119">clients--</label>
+			<nail x="0" y="-102"/>
+		</transition>
+	</template>
+	<template>
+		<name>Subscriber</name>
+		<declaration>
+clock t;
+clock c;
+    </declaration>
+		<location id="id63" x="-400" y="-200">
+			<name x="-420" y="-230">Idle</name>
+		</location>
+		<location id="id64" x="-200" y="-200">
+			<name x="-220" y="-230">Connecting</name>
+			<label kind="invariant" x="-220" y="-180">t &lt;= 30</label>
+		</location>
+		<location id="id65" x="335" y="-208">
+			<name x="315" y="-238">Connected</name>
+		</location>
+		<location id="id66" x="612" y="-212">
+			<name x="569" y="-246">Subscribing</name>
+		</location>
+		<location id="id67" x="612" y="-17">
+			<name x="561" y="0">Subscribed</name>
+		</location>
+		<location id="id68" x="1173" y="-25">
+			<name x="1153" y="-5">ReceivingMsg</name>
+		</location>
+		<location id="id69" x="1054" y="102">
+			<name x="1034" y="122">WaitPubrel</name>
+		</location>
+		<location id="id70" x="909" y="272">
+			<name x="889" y="292">ReadyPubcomp</name>
+		</location>
+		<location id="id71" x="1096" y="-442">
+			<name x="1076" y="-472">Unsubscribing</name>
+		</location>
+		<location id="id72" x="119" y="238">
+			<name x="89" y="258">KeepAlive</name>
+			<label kind="invariant" x="89" y="278">c &lt;= 10</label>
+		</location>
+		<location id="id73" x="-400" y="0">
+			<name x="-430" y="20">Disconnected</name>
+		</location>
+		<init ref="id63"/>
+		<transition id="id74">
+			<source ref="id72"/>
+			<target ref="id67"/>
+			<label kind="synchronisation" x="170" y="25">sub_pingresp?</label>
+			<nail x="187" y="59"/>
+		</transition>
+		<transition id="id75">
+			<source ref="id71"/>
+			<target ref="id67"/>
+			<label kind="synchronisation" x="841" y="-467">sub_unsuback?</label>
+			<label kind="assignment" x="799" y="-433">sub_subscribed = false</label>
+			<nail x="748" y="-442"/>
+		</transition>
+		<transition id="id76">
+			<source ref="id63"/>
+			<target ref="id64"/>
+			<label kind="synchronisation" x="-365" y="-229">sub_connect!</label>
+			<label kind="assignment" x="-365" y="-195">t = 0, c = 0</label>
+		</transition>
+		<transition id="id77">
+			<source ref="id64"/>
+			<target ref="id65"/>
+			<label kind="synchronisation" x="-17" y="-229">sub_connack?</label>
+			<label kind="assignment" x="-170" y="-195">sub_authenticated = true, session_sub_active = true, c = 0</label>
+		</transition>
+		<transition id="id78">
+			<source ref="id64"/>
+			<target ref="id73"/>
+			<label kind="guard" x="-306" y="-93">t &gt;= 30</label>
+		</transition>
+		<transition id="id79">
+			<source ref="id65"/>
+			<target ref="id66"/>
+			<label kind="guard" x="357" y="-204">sub_authenticated == true</label>
+			<label kind="synchronisation" x="408" y="-229">sub_subscribe!</label>
+		</transition>
+		<transition id="id80">
+			<source ref="id66"/>
+			<target ref="id67"/>
+			<label kind="synchronisation" x="518" y="-153">sub_suback?</label>
+			<label kind="assignment" x="425" y="-136">sub_subscribed = true</label>
+		</transition>
+		<transition id="id81">
+			<source ref="id67"/>
+			<target ref="id71"/>
+			<label kind="synchronisation" x="884" y="-246">sub_unsubscribe!</label>
+		</transition>
+		<transition id="id82">
+			<source ref="id67"/>
+			<target ref="id68"/>
+			<label kind="guard" x="663" y="-17">sub_authenticated == true &amp;&amp; sub_subscribed == true</label>
+			<label kind="synchronisation" x="756" y="0">sub_publish?</label>
+		</transition>
+		<transition id="id83">
+			<source ref="id68"/>
+			<target ref="id67"/>
+			<label kind="synchronisation" x="816" y="-110">sub_puback!</label>
+			<nail x="739" y="-76"/>
+		</transition>
+		<transition id="id84">
+			<source ref="id68"/>
+			<target ref="id69"/>
+			<label kind="synchronisation" x="1105" y="51">sub_pubrec!</label>
+		</transition>
+		<transition id="id85">
+			<source ref="id69"/>
+			<target ref="id70"/>
+			<label kind="synchronisation" x="960" y="204">sub_pubrel?</label>
+		</transition>
+		<transition id="id86">
+			<source ref="id70"/>
+			<target ref="id67"/>
+			<label kind="synchronisation" x="629" y="93">sub_pubcomp!</label>
+			<nail x="835" y="192"/>
+			<nail x="635" y="-8"/>
+		</transition>
+		<transition id="id87">
+			<source ref="id67"/>
+			<target ref="id72"/>
+			<label kind="synchronisation" x="280" y="161">sub_pingreq!</label>
+			<label kind="assignment" x="246" y="178">c = 0</label>
+		</transition>
+		<transition id="id88">
+			<source ref="id72"/>
+			<target ref="id73"/>
+			<label kind="guard" x="-119" y="161">c &gt;= 10</label>
+			<label kind="assignment" x="-459" y="187">session_sub_active = false, sub_authenticated = false</label>
+		</transition>
+		<transition id="id89">
+			<source ref="id67"/>
+			<target ref="id73"/>
+			<label kind="synchronisation" x="42" y="-68">sub_disconnect!</label>
+			<label kind="assignment" x="-204" y="-42">session_sub_active = false, sub_authenticated = false, sub_subscribed = false</label>
+		</transition>
+		<transition id="id90">
+			<source ref="id73"/>
+			<target ref="id63"/>
+			<nail x="-400" y="-100"/>
+			<nail x="-400" y="-150"/>
+		</transition>
+	</template>
+	<template>
+		<name>Attacker</name>
+		<declaration>
+// Rien de spécial
+    </declaration>
+		<location id="id91" x="0" y="0">
+			<name x="-20" y="-30">Idle</name>
+		</location>
+		<location id="id92" x="300" y="0">
+			<name x="280" y="-30">Intercepting</name>
+		</location>
+		<init ref="id91"/>
+		<transition id="id93">
+			<source ref="id91"/>
+			<target ref="id92"/>
+			<label kind="guard" x="51" y="-161">attack_active == true &amp;&amp; tls_enabled == false</label>
+			<label kind="synchronisation" x="76" y="-136">pub_publish?</label>
+			<nail x="127" y="-119"/>
+		</transition>
+		<transition id="id94">
+			<source ref="id92"/>
+			<target ref="id91"/>
+			<label kind="assignment" x="51" y="0">message_tampered = true</label>
+		</transition>
+	</template>
+	<system>
+Pub = Publisher();
+broker = Broker();
+Sub = Subscriber();
+attacker = Attacker();
+system Pub, broker, Sub, attacker;
+  </system>
+	<queries>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment>P1: Absence de deadlock</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:25:42 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>E&lt;&gt; Pub.Connected</formula>
+			<comment>P2: Le publisher peut se connecter</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:25:45 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>E&lt;&gt; Sub.Subscribed</formula>
+			<comment>P3: Le subscriber peut s'abonner</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:25:47 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>E&lt;&gt; Pub.Publishing</formula>
+			<comment>P4: Le publisher peut publier</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:25:48 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>E&lt;&gt; Sub.ReceivingMsg</formula>
+			<comment>P5: Le subscriber peut recevoir un message</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:25:49 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (Pub.Publishing imply pub_authenticated == true)</formula>
+			<comment>P6: On publie seulement si authentifie</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:25:50 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (Sub.Subscribed imply sub_authenticated == true)</formula>
+			<comment>P7: On s'abonne seulement si authentifie</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:25:52 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>E&lt;&gt; Pub.WaitPuback</formula>
+			<comment>P8: Publisher peut faire QoS 1</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:25:53 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>E&lt;&gt; Pub.WaitPubrec</formula>
+			<comment>P9: Publisher peut faire QoS 2</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:25:55 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>E&lt;&gt; Sub.Unsubscribing</formula>
+			<comment>P10: Subscriber peut se desabonner</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:25:59 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>E&lt;&gt; Pub.Disconnected</formula>
+			<comment>P11: Publisher peut se deconnecter proprement</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:26:01 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>E&lt;&gt; Sub.Disconnected</formula>
+			<comment>P12: Subscriber peut se deconnecter proprement</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-24 19:26:07 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>E&lt;&gt; intercepted_count &gt; 0</formula>
+			<comment>A1: L'attaquant intercepte des messages (DOIT ETRE ROUGE)</comment>
+			<result outcome="failure" type="quality" timestamp="2026-04-30 17:25:41 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>E&lt;&gt; message_tampered == true</formula>
+			<comment>A2: Message altéré par l'attaquant (DOIT ETRE ROUGE)</comment>
+			<result outcome="failure" type="quality" timestamp="2026-04-30 17:25:41 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>A[] not message_tampered</formula>
+			<comment>S1: Aucun message altere - securite garantie</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-30 17:25:41 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>A[] intercepted_count == 0</formula>
+			<comment>S2: Aucune interception possible - TLS actif</comment>
+			<result outcome="success" type="quality" timestamp="2026-04-30 17:25:41 +0100">
+			</result>
+		</query>
+	</queries>
+</nta>

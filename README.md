@@ -27,10 +27,12 @@ Automate représentant le client qui publie les données : connexion, authentifi
 
 
 ### 4.2 Template Broker ; états, canaux et logique de contrôle
-Automate central qui gère l'authentification des deux clients et relaie les messages du Publisher vers le Subscriber.
+Automate central qui gère l'authentification des deux clients et relaie les messages du Publisher vers le Subscriber.<img width="1657" height="986" alt="image" src="https://github.com/user-attachments/assets/dfa3faf8-8c24-4a55-9106-a2576ec0b9f5" />
+
 
 ### 4.3 Template Subscriber ; états, canaux et variables
-Automate représentant le client abonné : connexion, authentification, abonnement au topic, réception des messages.
+Automate représentant le client abonné : connexion, authentification, abonnement au topic, réception des messages.<img width="1703" height="843" alt="image" src="https://github.com/user-attachments/assets/d3d87181-73a8-49e7-9369-8781eb4c0b05" />
+
 
 ## 5. Vérifications générales ; Propriétés et requêtes CTL
 
@@ -45,6 +47,8 @@ Vérifient qu'aucune publication ni abonnement n'a lieu sans authentification pr
 
 ### 5.4 Tableau récapitulatif des requêtes CTL
 L'ensemble des propriétés vérifiées (P1 à P12) est regroupé et validé dans le modèle nominal.
+<img width="1751" height="443" alt="image" src="https://github.com/user-attachments/assets/63371788-d61b-4041-a7ea-1b98a9310035" />
+
 
 ## 6. Vulnérabilités CVE et modélisation des attaques
 

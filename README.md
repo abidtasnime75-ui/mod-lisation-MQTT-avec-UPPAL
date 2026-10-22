@@ -4,10 +4,9 @@ Modèle à automates temporisés du protocole MQTT v3.1.1 (Publisher, Broker,
 Subscriber), vérifié par model checking (CTL), avec deux attaques réelles
 et leurs contre-mesures.
 
-![UPPAAL](https://img.shields.io/badge/UPPAAL-<version>-blue)
+![UPPAAL](https://img.shields.io/badge/UPPAAL-5.0-blue)
 ![MQTT](https://img.shields.io/badge/MQTT-v3.1.1-green)
-![License](https://img.shields.io/badge/license-<type>-lightgrey)
-
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
 ## Résultats en bref
 
 | Scénario | Fichier | Verdict |

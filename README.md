@@ -1,67 +1,79 @@
-# Modélisation du protocole MQTT v3.1.1 avec UPPAAL
+# Modélisation formelle de MQTT v3.1.1 avec UPPAAL
 
-Ce dépôt contient la modélisation formelle du protocole MQTT v3.1.1 (outil UPPAAL), incluant un modèle nominal et deux attaques avec leurs contre-mesures.
+Modèle à automates temporisés du protocole MQTT v3.1.1 (Publisher, Broker,
+Subscriber), vérifié par model checking (CTL), avec deux attaques réelles
+et leurs contre-mesures.
 
-## 2. Référence officielle de la spécification MQTT v3.1.1
+![UPPAAL](https://img.shields.io/badge/UPPAAL-<version>-blue)
+![MQTT](https://img.shields.io/badge/MQTT-v3.1.1-green)
+![License](https://img.shields.io/badge/license-<type>-lightgrey)
 
-La modélisation se base sur la spécification officielle OASIS, *MQTT Version 3.1.1* (29 octobre 2014), disponible ici : https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html
+## Résultats en bref
 
-## 3. Extraction des comportements pertinents du protocole
+| Scénario | Fichier | Verdict |
+|---|---|---|
+| Fonctionnement normal | `modèle nominal.xml` | 12/12 propriétés satisfaites |
+| Attaque 1 : sniffing (sans TLS) | `modèle avec attaque1.xml` | Interception **possible** → corrigée par TLS |
+| Attaque 2 : CVE-2017-7654 | `modèle avec attaque2.xml` | Bypass d'authentification **possible** |
+| Attaque 2 + contre-mesure | `modèle avec attaque2 avec sol.xml` | Attaque **non atteignable** |
 
-### 3.1 Types de messages MQTT
-Les principaux paquets de contrôle du protocole (CONNECT, CONNACK, SUBSCRIBE, SUBACK, PUBLISH, PUBACK, PUBREC, PUBREL, PUBCOMP, PINGREQ, PINGRESP, DISCONNECT) ont été identifiés et traduits en canaux de synchronisation UPPAAL.
+## Architecture du modèle
 
-### 3.2 États et transitions des entités
-Chaque entité (Publisher, Broker, Subscriber) a été modélisée par un automate avec ses propres états (connexion, authentification, publication/réception, déconnexion) et les transitions correspondant aux échanges de paquets MQTT.
+```
+ ┌───────────┐  CONNECT/PUBLISH   ┌────────┐   PUBLISH    ┌────────────┐
+ │ Publisher │ ─────────────────► │ Broker │ ───────────► │ Subscriber │
+ └───────────┘ ◄───────────────── └────────┘ ◄─────────── └────────────┘
+      CONNACK/PUBACK                 ▲   SUBSCRIBE/SUBACK
+                                     │
+                              ┌──────┴──────┐
+                              │  Attaquant  │  (modèles attaque1 / attaque2)
+                              └─────────────┘
+```
 
-### 3.3 Contraintes temporelles et timers
-Des horloges ont été ajoutées pour représenter le timeout de connexion et le mécanisme de Keep Alive (PINGREQ/PINGRESP) prévus par la norme.
+- 12 types de paquets modélisés comme canaux de synchronisation
+- Timers : timeout de connexion et Keep Alive (PINGREQ/PINGRESP)
+- QoS 0, 1 et 2 : trois chemins distincts après PUBLISH
 
-### 3.4 Niveaux de qualité de service (QoS 0, 1, 2)
-Les trois niveaux de QoS ont été modélisés comme trois chemins distincts après publication : sans accusé de réception (QoS 0), avec un accusé simple (QoS 1), et avec un handshake en plusieurs étapes garantissant une livraison unique (QoS 2).
+## Contenu du dépôt
 
-## 4. Description générale du modèle nominal UPPAAL
+| Fichier | Rôle |
+|---|---|
+| `modèle nominal.xml` | Protocole sans attaquant |
+| `modèle avec attaque1.xml` | + attaquant passif (pas de TLS) |
+| `modèle avec attaque2.xml` | + exploitation de CVE-2017-7654 |
+| `modèle avec attaque2 avec sol.xml` | Attaque 2 avec authentification stricte et limite de connexions |
 
-### 4.1 Template Publisher ; états, canaux et variables
-Automate représentant le client qui publie les données : connexion, authentification, puis publication selon le QoS choisi.<img width="1681" height="908" alt="image" src="https://github.com/user-attachments/assets/ea107e3d-49ec-4e20-9ff4-a2aa0d291901" />
+## Utilisation
 
+1. Installer [UPPAAL](https://uppaal.org) (version testée : `<x.y.z>`)
+2. Ouvrir un fichier `.xml` : *File → Open*
+3. Onglet **Verifier** → sélectionner une requête → **Check**
+4. Vert = propriété satisfaite, rouge = violée
 
-### 4.2 Template Broker ; états, canaux et logique de contrôle
-Automate central qui gère l'authentification des deux clients et relaie les messages du Publisher vers le Subscriber.<img width="1657" height="986" alt="image" src="https://github.com/user-attachments/assets/dfa3faf8-8c24-4a55-9106-a2576ec0b9f5" />
+## Propriétés vérifiées (modèle nominal)
 
+| # | Type | Requête CTL | Signification | Résultat |
+|---|---|---|---|---|
+| P1 | Deadlock | `A[] not deadlock` | Le système ne se bloque jamais | ✅ |
+| P2 | Reachability | `E<> <...>` | Connexion atteignable | ✅ |
+| P3 | Safety | `A[] <...>` | Pas de PUBLISH sans authentification | ✅ |
+| … | … | … | … | … |
 
-### 4.3 Template Subscriber ; états, canaux et variables
-Automate représentant le client abonné : connexion, authentification, abonnement au topic, réception des messages.<img width="1703" height="843" alt="image" src="https://github.com/user-attachments/assets/d3d87181-73a8-49e7-9369-8781eb4c0b05" />
+## Attaques et contre-mesures
 
+### Attaque 1 : interception passive (pas de TLS)
+- **Principe :** un attaquant lit et altère les messages en clair
+- **Propriété violée :** `<requête>`
+- **Contre-mesure :** TLS → la propriété devient non atteignable ✅
 
-## 5. Vérifications générales ; Propriétés et requêtes CTL
+### Attaque 2 : CVE-2017-7654 (Mosquitto)
+- **Principe :** connexion et authentification sans mot de passe valide, d'où un déni de service
+- **Propriété violée :** `<requête>`
+- **Contre-mesure :** vérification stricte du mot de passe + limite de connexions ✅
 
-### 5.1 Absence de deadlock
-Vérifie que le système ne se bloque jamais complètement.
+## Références
+- [Spécification MQTT v3.1.1 (OASIS)](https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html)
+- [CVE-2017-7654](https://nvd.nist.gov/vuln/detail/CVE-2017-7654)
 
-### 5.2 Propriétés de reachability
-Vérifient que les comportements attendus (connexion, publication, réception, QoS 1/2, déconnexion) sont bien atteignables.
-
-### 5.3 Propriétés de sécurité (safety)
-Vérifient qu'aucune publication ni abonnement n'a lieu sans authentification préalable.
-
-### 5.4 Tableau récapitulatif des requêtes CTL
-L'ensemble des propriétés vérifiées (P1 à P12) est regroupé et validé dans le modèle nominal.
-<img width="1751" height="443" alt="image" src="https://github.com/user-attachments/assets/63371788-d61b-4041-a7ea-1b98a9310035" />
-
-
-## 6. Vulnérabilités CVE et modélisation des attaques
-
-### 6.1 Interception passive (Sniffing) ; absence de chiffrement TLS
-Modélise un attaquant capable d'intercepter et d'altérer les messages en l'absence de chiffrement TLS.
-
-### 6.2 Bypass d'authentification et déni de service (CVE-2017-7654)
-Modélise la vulnérabilité réelle CVE-2017-7654 du broker Mosquitto, permettant à un attaquant de se connecter et de s'authentifier sans mot de passe valide.
-
-## 7. Contre-mesures et validation formelle
-
-### 7.1 Activation du chiffrement TLS ; Attaque 1
-L'activation du chiffrement TLS est vérifiée formellement : les propriétés d'interception et d'altération des messages deviennent non atteignables.
-
-### 7.2 Authentification stricte et limitation de connexions ; CVE-2017-7654
-L'ajout d'une vérification stricte du mot de passe et d'une limite de connexions est vérifié formellement : l'attaquant ne peut plus se connecter ni s'authentifier.
+## Auteurs
+ Tasnim ABID /Wala Ouaili
